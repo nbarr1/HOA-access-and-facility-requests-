@@ -11,7 +11,7 @@ const inboundEmailSchema = z.object({
 });
 
 function sanitizeEmailText(value: string): string {
-  return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 10_000);
+  return value.replace(/<[a-zA-Z/][^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 10_000);
 }
 
 export async function POST(request: NextRequest) {
