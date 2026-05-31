@@ -1,0 +1,18 @@
+:root { color-scheme: light; font-family: Inter, system-ui, sans-serif; background: #f7fafc; color: #172033; }
+body { margin: 0; }
+a { color: inherit; }
+main { max-width: 1180px; margin: 0 auto; padding: 32px; }
+.nav { display: flex; justify-content: space-between; align-items: center; background: #0f2742; color: white; padding: 18px 32px; }
+.nav a { margin-left: 18px; text-decoration: none; font-weight: 700; }
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.card { background: white; border: 1px solid #e2e8f0; border-radius: 18px; padding: 20px; box-shadow: 0 10px 24px rgba(15, 39, 66, .06); }
+.table { width: 100%; border-collapse: collapse; background: white; border-radius: 16px; overflow: hidden; }
+th, td { padding: 13px 14px; border-bottom: 1px solid #edf2f7; text-align: left; }
+th { background: #eff6ff; color: #12345a; }
+.badge { border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+.granted, .paid, .done { background: #d1fae5; color: #065f46; }
+.revoked, .lapsed, .urgent { background: #fee2e2; color: #991b1b; }
+.pending, .high { background: #fef3c7; color: #92400e; }
+.hold, .unknown, .normal { background: #e0e7ff; color: #3730a3; }
+.low { background: #e5e7eb; color: #374151; }
+.hero { display: flex; justify-content: space-between; gap: 24px; align-items: end; margin: 24px 0; }
