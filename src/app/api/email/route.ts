@@ -16,7 +16,10 @@ function sanitizeEmailText(value: string): string {
 
 export async function POST(request: NextRequest) {
   const configuredSecret = process.env.INBOUND_EMAIL_SHARED_SECRET;
-  if (configuredSecret && request.headers.get("x-hoa-email-secret") !== configuredSecret) {
+  if (!configuredSecret) {
+    return NextResponse.json({ error: "Internal Server Error: Email secret not configured" }, { status: 500 });
+  }
+  if (request.headers.get("x-hoa-email-secret") !== configuredSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
