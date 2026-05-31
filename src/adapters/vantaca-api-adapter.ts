@@ -13,7 +13,8 @@ export class VantacaApiBillingAdapter implements BillingProvider {
 
   async fetchDuesStatuses(since?: string): Promise<BillingStatusRecord[]> {
     if (!this.baseUrl || !this.token) throw new Error("Vantaca API adapter requires vendor-approved base URL and token.");
-    const url = new URL("/dues-statuses", this.baseUrl);
+    const baseUrlNormalized = this.baseUrl.endsWith("/") ? this.baseUrl : this.baseUrl + "/";
+    const url = new URL("dues-statuses", baseUrlNormalized);
     if (since) url.searchParams.set("since", since);
     const response = await fetch(url, { headers: { authorization: `Bearer ${this.token}` } });
     if (!response.ok) throw new Error(`Vantaca dues sync failed with ${response.status}`);
