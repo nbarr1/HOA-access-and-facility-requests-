@@ -1,0 +1,39 @@
+export type Facility = "pool" | "tennis" | "clubhouse";
+export type DuesStatus = "paid" | "lapsed" | "unknown";
+export type AccessStatus = "pending" | "granted" | "revoked" | "hold";
+export type Role = "board_admin" | "board_member" | "resident";
+export type Actor = { type: "system"; id: "system" } | { type: "user"; id: string; name: string };
+
+export type Resident = {
+  id: string;
+  name: string;
+  unitAddress: string;
+  email: string;
+  duesStatus: DuesStatus;
+  accessStatus: AccessStatus;
+  externalAccessId?: string | null;
+  externalBillingId?: string | null;
+  lastSyncedAt?: string | null;
+  overrideReason?: string | null;
+};
+
+export type AuditEntry = {
+  actor: Actor;
+  action: string;
+  targetResidentId?: string;
+  reason: string;
+  before: unknown;
+  after: unknown;
+  idempotencyKey: string;
+};
+
+export type RequestCategory = "access" | "facilities" | "vendor" | "invoice" | "other";
+export type RequestPriority = "urgent" | "high" | "normal" | "low";
+export type RequestStatus = "new" | "in_progress" | "done";
+
+export type TriageRequest = {
+  fromEmail: string;
+  subject: string;
+  bodyText: string;
+  receivedAt: string;
+};
