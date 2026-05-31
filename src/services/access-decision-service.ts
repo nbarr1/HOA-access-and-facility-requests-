@@ -8,12 +8,12 @@ export class AccessDecisionService {
 
   async reconcileDuesStatus(resident: Resident, nextDuesStatus: DuesStatus, actor: Actor = { type: "system", id: "system" }) {
     const decision = decideAccessForDues(resident, nextDuesStatus);
-    const idempotencyKey = `dues:${resident.id}:${nextDuesStatus}:${resident.lastSyncedAt ?? "initial"}`;
+    if (decision.action === "none") return { decision, providerResult: undefined };
+
+    const idempotencyKey = "dues:" + resident.id + ":" + nextDuesStatus + ":" + (resident.lastSyncedAt ?? "initial");
     const after = { ...resident, duesStatus: nextDuesStatus, accessStatus: decision.desiredStatus };
 
-    await this.auditSink.append({ actor, action: `decision.${decision.action}`, targetResidentId: resident.id, reason: decision.reason, before: resident, after, idempotencyKey });
-
-    if (decision.action === "none") return { decision, providerResult: undefined };
+    await this.auditSink.append({ actor, action: "decision." + decision.action, targetResidentId: resident.id, reason: decision.reason, before: resident, after, idempotencyKey });
 
     const facilities: Facility[] = ["pool", "tennis", "clubhouse"];
     const providerResult = decision.action === "grant"
