@@ -15,4 +15,4 @@ th { background: #eff6ff; color: #12345a; }
 .pending, .high { background: #fef3c7; color: #92400e; }
 .hold, .unknown, .normal { background: #e0e7ff; color: #3730a3; }
 .low { background: #e5e7eb; color: #374151; }
-.hero { display: flex; justify-content: space-between; gap: 24px; align-items: end; margin: 24px 0; }
+.hero { display: flex; justify-content: space-between; gap: 24px; align-items: flex-end; margin: 24px 0; }
