@@ -31,6 +31,15 @@ export type RequestCategory = "access" | "facilities" | "vendor" | "invoice" | "
 export type RequestPriority = "urgent" | "high" | "normal" | "low";
 export type RequestStatus = "new" | "in_progress" | "done";
 
+export type RequestRecord = {
+  id: string;
+  category: RequestCategory;
+  priority: RequestPriority;
+  status: RequestStatus;
+  subject: string;
+  from_email: string;
+};
+
 export type TriageRequest = {
   fromEmail: string;
   subject: string;
