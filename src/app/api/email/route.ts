@@ -1,5 +1,6 @@
 import { RuleBasedRequestClassifier } from "@/domain/request-classifier";
 import type { TriageRequest } from "@/domain/types";
+import { createSupabaseServiceClient } from "@/lib/supabase";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -33,6 +34,22 @@ export async function POST(request: NextRequest) {
     receivedAt: parsed.data.receivedAt ?? new Date().toISOString()
   };
   const classification = new RuleBasedRequestClassifier().classify(triageRequest);
+  const supabase = createSupabaseServiceClient();
+  const { data, error } = await supabase
+    .from("requests")
+    .insert({
+      from_email: triageRequest.fromEmail,
+      subject: triageRequest.subject,
+      body_text: parsed.data.bodyText,
+      sanitized_body: triageRequest.bodyText,
+      category: classification.category,
+      priority: classification.priority,
+      classification_reason: classification.reason,
+      received_at: triageRequest.receivedAt
+    })
+    .select("id")
+    .single();
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ request: triageRequest, classification, persisted: false, note: "Wire this route to Supabase service client in deployment." }, { status: 202 });
+  return NextResponse.json({ id: data.id, request: triageRequest, classification, persisted: true }, { status: 201 });
 }

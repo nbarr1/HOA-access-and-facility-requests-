@@ -50,3 +50,28 @@ Business logic calls `AccessProvider` and `BillingProvider` only. To switch from
 ## Manual-vs-automated tradeoff
 
 Every dues status change creates an audit row before provider action. If the provider is manual, the app creates a board task with precise instructions. A named board member performs the action in AirAllow/Vantaca and marks it done; that completion is audited.
+
+## Manual Vantaca balance review
+
+When Vantaca API credentials are unavailable, import balances into the review queue instead of automating access changes directly.
+
+CSV import:
+
+```bash
+curl -X POST "$HOA_APP_BASE_URL/api/vantaca/import" \
+  -H "x-hoa-sync-secret: $INBOUND_EMAIL_SHARED_SECRET" \
+  -H "content-type: text/csv" \
+  --data-binary @vantaca-balances.csv
+```
+
+Accepted CSV headers include `externalBillingId`, `accountId`, `unitAddress`, `address`, `residentName`, `name`, `email`, `balance`, `amountDue`, `balanceReference`, and `asOf`. Positive balances stage as `lapsed`; zero or negative balances stage as `paid`.
+
+Review staged rows at `/vantaca`. Approving a matched row reconciles dues, writes audit rows, and creates manual AirAllow tasks when access needs to change.
+
+Optional Playwright-assisted read:
+
+```bash
+npm run vantaca:read-balance -- "204 Pine Court"
+```
+
+Configure the `VANTACA_*_SELECTOR` values in `.env.local` for the current Vantaca UI. The helper reads one balance and posts it to the review queue; it does not change Vantaca or AirAllow.

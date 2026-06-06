@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts"
+    "seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts",
+    "vantaca:read-balance": "tsx --env-file-if-exists=.env.local scripts/vantaca-read-balance.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
@@ -26,6 +27,7 @@
     "@types/react-dom": "^19.0.4",
     "eslint": "^9.25.1",
     "eslint-config-next": "^15.3.2",
+    "playwright": "^1.60.0",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^3.1.2"
