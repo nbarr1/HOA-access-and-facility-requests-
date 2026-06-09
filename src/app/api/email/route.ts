@@ -10,20 +10,42 @@ const inboundEmailSchema = z.object({
   fromEmail: z.string().email(),
   subject: z.string().min(1).max(250),
   bodyText: z.string().max(20_000).default(""),
-  receivedAt: z.string().datetime().optional()
+  receivedAt: z.string().optional()
 });
 
 function sanitizeEmailText(value: string): string {
   return value.replace(/<[a-zA-Z/][^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 10_000);
 }
 
+function emailSecretFromRequest(request: NextRequest) {
+  const explicitHeader = request.headers.get("x-hoa-email-secret")?.trim();
+  const authorization = request.headers.get("authorization")?.trim();
+  const bearer = authorization?.toLowerCase().startsWith("bearer ") ? authorization.slice(7).trim() : undefined;
+  return explicitHeader || bearer || "";
+}
+
+function normalizeReceivedAt(value: string | undefined) {
+  if (!value) return new Date().toISOString();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+}
+
 export async function POST(request: NextRequest) {
-  const configuredSecret = process.env.INBOUND_EMAIL_SHARED_SECRET;
+  const configuredSecret = process.env.INBOUND_EMAIL_SHARED_SECRET?.trim();
   if (!configuredSecret) {
     return NextResponse.json({ error: "Internal Server Error: Email secret not configured" }, { status: 500 });
   }
-  if (request.headers.get("x-hoa-email-secret") !== configuredSecret) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const receivedSecret = emailSecretFromRequest(request);
+  if (receivedSecret !== configuredSecret) {
+    return NextResponse.json({
+      error: "Unauthorized",
+      auth: {
+        emailSecretHeaderPresent: request.headers.has("x-hoa-email-secret"),
+        authorizationHeaderPresent: request.headers.has("authorization"),
+        receivedSecretLength: receivedSecret.length,
+        configuredSecretLength: configuredSecret.length
+      }
+    }, { status: 401 });
   }
 
   const parsed = inboundEmailSchema.safeParse(await request.json());
@@ -33,7 +55,7 @@ export async function POST(request: NextRequest) {
     fromEmail: parsed.data.fromEmail,
     subject: sanitizeEmailText(parsed.data.subject),
     bodyText: sanitizeEmailText(parsed.data.bodyText),
-    receivedAt: parsed.data.receivedAt ?? new Date().toISOString()
+    receivedAt: normalizeReceivedAt(parsed.data.receivedAt)
   };
   const supabase = createSupabaseServiceClient();
   const workflow = await startEmailWorkflow(supabase, {
