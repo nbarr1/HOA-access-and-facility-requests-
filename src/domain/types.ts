@@ -30,12 +30,14 @@ export type AuditEntry = {
 export type RequestCategory = "access" | "facilities" | "vendor" | "invoice" | "other";
 export type RequestPriority = "urgent" | "high" | "normal" | "low";
 export type RequestStatus = "new" | "in_progress" | "done";
+export type RequestActionNeeded = "emergency_response" | "access_follow_up" | "facility_repair" | "vendor_follow_up" | "invoice_review" | "board_review";
 
 export type RequestRecord = {
   id: string;
   category: RequestCategory;
   priority: RequestPriority;
   status: RequestStatus;
+  action_needed: RequestActionNeeded;
   subject: string;
   from_email: string;
 };

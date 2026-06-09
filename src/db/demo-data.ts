@@ -7,7 +7,7 @@ export const demoResidents: Resident[] = [
 ];
 
 export const demoRequests: RequestRecord[] = [
-  { id: "req-1", category: "facilities", priority: "urgent", status: "new", subject: "Pool gate will not latch", from_email: "lifeguard@example.com" },
-  { id: "req-2", category: "access", priority: "high", status: "new", subject: "Need tennis access after paying dues", from_email: "jane@example.com" },
-  { id: "req-3", category: "invoice", priority: "normal", status: "in_progress", subject: "Landscaping invoice", from_email: "vendor@example.com" }
+  { id: "req-1", category: "facilities", priority: "urgent", status: "new", action_needed: "emergency_response", subject: "Pool gate will not latch", from_email: "lifeguard@example.com" },
+  { id: "req-2", category: "access", priority: "high", status: "new", action_needed: "access_follow_up", subject: "Need tennis access after paying dues", from_email: "jane@example.com" },
+  { id: "req-3", category: "invoice", priority: "normal", status: "in_progress", action_needed: "invoice_review", subject: "Landscaping invoice", from_email: "vendor@example.com" }
 ];

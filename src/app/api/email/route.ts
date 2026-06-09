@@ -1,6 +1,6 @@
-import { RuleBasedRequestClassifier } from "@/domain/request-classifier";
 import type { TriageRequest } from "@/domain/types";
 import { createSupabaseServiceClient } from "@/lib/supabase";
+import { classifyWithLearning } from "@/services/request-learning-service";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -33,8 +33,8 @@ export async function POST(request: NextRequest) {
     bodyText: sanitizeEmailText(parsed.data.bodyText),
     receivedAt: parsed.data.receivedAt ?? new Date().toISOString()
   };
-  const classification = new RuleBasedRequestClassifier().classify(triageRequest);
   const supabase = createSupabaseServiceClient();
+  const classification = await classifyWithLearning(supabase, triageRequest);
   const { data, error } = await supabase
     .from("requests")
     .insert({
@@ -44,7 +44,11 @@ export async function POST(request: NextRequest) {
       sanitized_body: triageRequest.bodyText,
       category: classification.category,
       priority: classification.priority,
+      action_needed: classification.actionNeeded,
       classification_reason: classification.reason,
+      category_confidence: classification.confidence,
+      categorization_note: classification.note,
+      needs_category_review: classification.needsReview,
       received_at: triageRequest.receivedAt
     })
     .select("id")

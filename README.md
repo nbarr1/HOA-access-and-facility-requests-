@@ -75,3 +75,20 @@ npm run vantaca:read-balance -- "204 Pine Court"
 ```
 
 Configure the `VANTACA_*_SELECTOR` values in `.env.local` for the current Vantaca UI. The helper reads one balance and posts it to the review queue; it does not change Vantaca or AirAllow.
+
+## Email triage categorization
+
+Forward inbound HOA email to `/api/email` with header `x-hoa-email-secret`. The route stores each message in `requests` with a category, priority, and action needed.
+
+| Match | Category | Priority | Action needed |
+| --- | --- | --- | --- |
+| `flood`, `fire`, `injur`, `broken gate`, `no access`, `locked out`, `security`, `emergency` | keyword category | urgent | emergency_response |
+| `access`, `key`, `fob`, `credential`, `gate code`, `locked out` | access | high if access keyword also matches high-priority rule | access_follow_up |
+| `pool`, `tennis`, `clubhouse`, `light`, `gate`, `landscap`, `repair`, `leak`, `broken` | facilities | high unless urgent keyword matches | facility_repair |
+| `proposal`, `quote`, `vendor`, `contractor`, `w-9` | vendor | normal unless priority keyword matches | vendor_follow_up |
+| `invoice`, `bill`, `payment due`, `remittance` | invoice | normal unless priority keyword matches | invoice_review |
+| no category keyword | other | normal unless priority keyword matches | board_review |
+
+The triage page sorts requests by priority: urgent, high, normal, then low.
+
+Unknown or low-confidence emails are not left uncategorized. They are stored as `other` with `board_review`, marked `needs_category_review`, and surfaced on the dashboard. When a board member saves a corrected category, priority, and action, the correction is stored in `request_classification_feedback`. Future inbound emails compare their tokens against those board corrections before falling back to the static rules, so repeated recategorizations improve classification over time.

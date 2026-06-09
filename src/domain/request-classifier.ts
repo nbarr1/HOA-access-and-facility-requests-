@@ -1,6 +1,6 @@
-import type { RequestCategory, RequestPriority, TriageRequest } from "./types";
+import type { RequestActionNeeded, RequestCategory, RequestPriority, TriageRequest } from "./types";
 
-export type Classification = { category: RequestCategory; priority: RequestPriority; reason: string };
+export type Classification = { category: RequestCategory; priority: RequestPriority; actionNeeded: RequestActionNeeded; reason: string };
 export interface RequestClassifier { classify(request: TriageRequest): Classification; }
 
 const priorityRules: Array<[RequestPriority, RegExp]> = [
@@ -16,11 +16,20 @@ const categoryRules: Array<[RequestCategory, RegExp]> = [
   ["access", /\b(access|key|fob|credential|gate code|locked out)\b/i]
 ];
 
+const actionByCategory: Record<RequestCategory, RequestActionNeeded> = {
+  access: "access_follow_up",
+  facilities: "facility_repair",
+  vendor: "vendor_follow_up",
+  invoice: "invoice_review",
+  other: "board_review"
+};
+
 export class RuleBasedRequestClassifier implements RequestClassifier {
   classify(request: TriageRequest): Classification {
     const text = `${request.fromEmail} ${request.subject} ${request.bodyText}`;
     const priority = priorityRules.find(([, re]) => re.test(text))?.[0] ?? "normal";
     const category = categoryRules.find(([, re]) => re.test(text))?.[0] ?? "other";
-    return { category, priority, reason: `Rule-based keyword match selected ${category}/${priority}.` };
+    const actionNeeded = priority === "urgent" ? "emergency_response" : actionByCategory[category];
+    return { category, priority, actionNeeded, reason: `Rule-based keyword match selected ${category}/${priority}; action ${actionNeeded}.` };
   }
 }
