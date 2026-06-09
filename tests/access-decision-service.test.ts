@@ -4,7 +4,7 @@ import { AccessDecisionService } from "@/services/access-decision-service";
 import { InMemoryAuditSink } from "@/services/audit-service";
 import type { Resident } from "@/domain/types";
 
-const resident: Resident = { id: "1", name: "Sam Rivera", unitAddress: "204 Pine", email: "sam@example.com", duesStatus: "paid", accessStatus: "granted", lastSyncedAt: "2026-05-30" };
+const resident: Resident = { id: "resident-id", name: "Resident", unitAddress: "Unit Address", email: "resident@example.invalid", duesStatus: "paid", accessStatus: "granted", lastSyncedAt: "2026-05-30" };
 
 describe("access decision service", () => {
   it("audits before provider action and logs provider result", async () => {

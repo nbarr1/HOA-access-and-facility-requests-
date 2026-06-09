@@ -20,11 +20,7 @@ npm test
 npm run dev
 ```
 
-Apply `supabase/migrations/0001_initial.sql` in Supabase, then run:
-
-```bash
-npm run seed
-```
+Apply the SQL files in `supabase/migrations/` in order. The app starts with empty tables; add residents, requests, and review records through the application workflows or Supabase admin tools.
 
 ## Environment variables
 
@@ -71,7 +67,7 @@ Review staged rows at `/vantaca`. Approving a matched row reconciles dues, write
 Optional Playwright-assisted read:
 
 ```bash
-npm run vantaca:read-balance -- "204 Pine Court"
+npm run vantaca:read-balance -- "<unit address or account number>"
 ```
 
 Configure the `VANTACA_*_SELECTOR` values in `.env.local` for the current Vantaca UI. The helper reads one balance and posts it to the review queue; it does not change Vantaca or AirAllow.
@@ -86,9 +82,9 @@ Webhook payload:
 {
   "messageId": "provider-message-id",
   "source": "inbound-email-provider",
-  "fromEmail": "resident@example.com",
-  "subject": "Pool gate will not latch",
-  "bodyText": "This is urgent and needs repair.",
+  "fromEmail": "<sender@example.com>",
+  "subject": "<email subject>",
+  "bodyText": "<plain text email body>",
   "receivedAt": "2026-06-09T16:00:00.000Z"
 }
 ```

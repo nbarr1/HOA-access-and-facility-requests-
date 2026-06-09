@@ -40,7 +40,7 @@ async function postToReviewQueue(record: BalanceRead) {
 
 async function main() {
   const query = process.argv.slice(2).join(" ").trim();
-  if (!query) throw new Error("Pass an address/account search term, for example: npm run vantaca:read-balance -- \"204 Pine Court\"");
+  if (!query) throw new Error("Pass an address/account search term, for example: npm run vantaca:read-balance -- \"<unit address or account number>\"");
 
   const browser = await chromium.launch({ headless: optional("VANTACA_HEADLESS") !== "false", channel: optional("VANTACA_BROWSER_CHANNEL") });
   const page = await browser.newPage();

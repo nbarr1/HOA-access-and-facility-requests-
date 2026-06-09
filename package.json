@@ -9,7 +9,6 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "seed": "tsx --env-file-if-exists=.env.local scripts/seed.ts",
     "vantaca:read-balance": "tsx --env-file-if-exists=.env.local scripts/vantaca-read-balance.ts"
   },
   "dependencies": {
