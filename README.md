@@ -80,6 +80,21 @@ Configure the `VANTACA_*_SELECTOR` values in `.env.local` for the current Vantac
 
 Forward inbound HOA email to `/api/email` with header `x-hoa-email-secret`. The route stores each message in `requests` with a category, priority, and action needed.
 
+Webhook payload:
+
+```json
+{
+  "messageId": "provider-message-id",
+  "source": "inbound-email-provider",
+  "fromEmail": "resident@example.com",
+  "subject": "Pool gate will not latch",
+  "bodyText": "This is urgent and needs repair.",
+  "receivedAt": "2026-06-09T16:00:00.000Z"
+}
+```
+
+`messageId` is optional but recommended. If omitted, the app derives one from sender, subject, body, and timestamp. The listener is idempotent: retries with the same message ID return the existing request instead of starting a duplicate workflow.
+
 | Match | Category | Priority | Action needed |
 | --- | --- | --- | --- |
 | `flood`, `fire`, `injur`, `broken gate`, `no access`, `locked out`, `security`, `emergency` | keyword category | urgent | emergency_response |
@@ -92,3 +107,11 @@ Forward inbound HOA email to `/api/email` with header `x-hoa-email-secret`. The 
 The triage page sorts requests by priority: urgent, high, normal, then low.
 
 Unknown or low-confidence emails are not left uncategorized. They are stored as `other` with `board_review`, marked `needs_category_review`, and surfaced on the dashboard. When a board member saves a corrected category, priority, and action, the correction is stored in `request_classification_feedback`. Future inbound emails compare their tokens against those board corrections before falling back to the static rules, so repeated recategorizations improve classification over time.
+
+Every accepted email starts a workflow:
+
+1. The email listener validates `x-hoa-email-secret`.
+2. The request is classified with learned feedback plus deterministic fallback rules.
+3. The request row is persisted with `workflow_started_at`.
+4. An `email.workflow_started` audit row is written.
+5. A pending `email-workflow` manual task is created with the recommended action.
