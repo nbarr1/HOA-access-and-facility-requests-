@@ -1,4 +1,5 @@
-import { createSupabasePublicClient } from "@/lib/supabase";
+import { createSupabaseServiceClient } from "@/lib/supabase";
+import { sendPasswordLink } from "@/lib/email";
 import { getAppBaseUrl } from "@/lib/site-url";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -16,9 +17,22 @@ async function sendPasswordSetupEmail(formData: FormData) {
   if (!email) redirect("/password/new?error=Email%20is%20required.");
 
   const origin = getAppBaseUrl(await headers());
-  const supabase = createSupabasePublicClient();
-  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${origin}/auth/callback?next=/update-password` });
-  if (error) redirect(`/password/new?error=${encodeURIComponent(error.message)}`);
+  const supabase = createSupabaseServiceClient();
+  const { data, error } = await supabase.auth.admin.generateLink({
+    type: "recovery",
+    email,
+    options: { redirectTo: `${origin}/auth/callback?next=/update-password` },
+  });
+  // Treat "user not found" as success to prevent email enumeration.
+  if (error?.message?.toLowerCase().includes("user not found")) redirect("/password/new?message=Check%20your%20email%20for%20a%20secure%20password%20setup%20link.");
+  if (error || !data.properties?.action_link) redirect(`/password/new?error=${encodeURIComponent(error?.message ?? "Unable to generate password setup link.")}`);
+
+  try {
+    await sendPasswordLink(email, data.properties.action_link, true);
+  } catch (err) {
+    console.error("Failed to send password setup email:", err);
+    redirect("/password/new?error=Unable%20to%20send%20email.%20Please%20try%20again.");
+  }
 
   redirect("/password/new?message=Check%20your%20email%20for%20a%20secure%20password%20setup%20link.");
 }
