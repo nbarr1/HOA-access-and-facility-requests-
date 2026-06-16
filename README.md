@@ -104,6 +104,8 @@ The triage page sorts requests by priority: urgent, high, normal, then low.
 
 Unknown or low-confidence emails are not left uncategorized. They are stored as `other` with `board_review`, marked `needs_category_review`, and surfaced on the dashboard. When a board member saves a corrected category, priority, and action, the correction is stored in `request_classification_feedback`. Future inbound emails compare their tokens against those board corrections before falling back to the static rules, so repeated recategorizations improve classification over time.
 
+TODO: Email triage rules are expected to need future maintenance for specific HOA cases. When updating future rules, review `src/domain/request-classifier.ts`, this `README.md` section, and related request-classifier tests in `tests/request-classifier.test.ts`; do not change current triage behavior as part of this TODO.
+
 Every accepted email starts a workflow:
 
 1. The email listener validates `x-hoa-email-secret`.
