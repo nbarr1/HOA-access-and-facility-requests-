@@ -1,4 +1,5 @@
 import { createSupabasePublicClient } from "@/lib/supabase";
+import { getAppBaseUrl } from "@/lib/site-url";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -8,16 +9,13 @@ type PasswordResetPageProps = {
   searchParams?: Promise<{ error?: string; message?: string }>;
 };
 
-function siteOrigin(headersList: Headers) {
-  return headersList.get("origin") ?? process.env.HOA_APP_BASE_URL ?? process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-}
 
 async function sendPasswordResetEmail(formData: FormData) {
   "use server";
   const email = String(formData.get("email") ?? "").trim();
   if (!email) redirect("/password/reset?error=Email%20is%20required.");
 
-  const origin = siteOrigin(await headers());
+  const origin = getAppBaseUrl(await headers());
   const supabase = createSupabasePublicClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${origin}/auth/callback?next=/update-password` });
   if (error) redirect(`/password/reset?error=${encodeURIComponent(error.message)}`);
