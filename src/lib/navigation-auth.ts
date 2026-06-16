@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { getSupabaseAccessTokenFromCookies } from "./auth-cookies";
 import { createSupabasePublicClient, createSupabaseServiceClient } from "./supabase";
 
 type AppRole = "board_admin" | "board_member" | "resident";
@@ -13,25 +13,9 @@ export type NavigationAccess = {
   isAccCommitteeMember: boolean;
 };
 
-function decodeSupabaseAuthCookie(value: string): string | null {
-  try {
-    const payload = value.startsWith("base64-") ? Buffer.from(value.slice("base64-".length), "base64url").toString("utf8") : value;
-    const parsed = JSON.parse(payload) as { access_token?: string } | [string] | string[];
-    if (Array.isArray(parsed)) return typeof parsed[0] === "string" ? parsed[0] : null;
-    return typeof parsed.access_token === "string" ? parsed.access_token : null;
-  } catch {
-    return null;
-  }
-}
-
-async function getSupabaseAccessToken() {
-  const cookieStore = await cookies();
-  const authCookie = cookieStore.getAll().find((cookie) => cookie.name.startsWith("sb-") && cookie.name.endsWith("-auth-token"));
-  return authCookie ? decodeSupabaseAuthCookie(authCookie.value) : null;
-}
 
 async function getCurrentUserId() {
-  const accessToken = await getSupabaseAccessToken();
+  const accessToken = await getSupabaseAccessTokenFromCookies();
   if (!accessToken) return null;
 
   const supabase = createSupabasePublicClient();
