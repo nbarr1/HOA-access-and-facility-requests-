@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
-import { requiredEnv } from "./env";
+import { requiredEnv, requiredEnvFrom } from "./env";
 
 export function createSupabasePublicClient() {
-  return createClient(requiredEnv("NEXT_PUBLIC_SUPABASE_URL"), requiredEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"));
+  return createClient(requiredEnv("NEXT_PUBLIC_SUPABASE_URL"), requiredEnvFrom(["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "NEXT_PUBLIC_SUPABASE_ANON_KEY"]));
 }
 
 export function createSupabaseServiceClient() {

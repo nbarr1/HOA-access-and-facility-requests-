@@ -26,6 +26,9 @@ Apply the SQL files in `supabase/migrations/` in order. The app starts with empt
 
 See `.env.example`.
 
+- `NEXT_PUBLIC_SUPABASE_URL` is required for Supabase API and auth calls.
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` is required for browser-safe Supabase auth; deployments that still use the older `NEXT_PUBLIC_SUPABASE_ANON_KEY` name are also supported as a fallback.
+- `SUPABASE_SERVICE_ROLE_KEY` is required for server-side database workflows.
 - `AIRALLOW_ADAPTER=manual|api`
 - `VANTACA_ADAPTER=manual|api`
 - API mode requires vendor-approved base URL/token values.
