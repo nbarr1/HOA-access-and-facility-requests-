@@ -9,8 +9,9 @@ create table public.acc_committee_members (
   appointed_by uuid references public.profiles(id),
   appointed_at timestamptz not null default now(),
   ended_at timestamptz,
-  constraint acc_committee_ended_when_inactive check (is_active or ended_at is not null),
-  unique (profile_id)
+  constraint acc_committee_ended_when_inactive check (is_active = (ended_at is null)),
+  unique (profile_id),
+  unique (id, profile_id)
 );
 
 create table public.acc_requests (
@@ -48,7 +49,7 @@ create table public.acc_requests (
 create table public.acc_request_votes (
   id uuid primary key default gen_random_uuid(),
   request_id uuid not null references public.acc_requests(id) on delete cascade,
-  committee_member_id uuid not null references public.acc_committee_members(id) on delete cascade,
+  committee_member_id uuid not null,
   voter_profile_id uuid not null references public.profiles(id) on delete cascade,
   vote_value public.acc_vote_value not null,
   comment text not null default '',
@@ -56,7 +57,8 @@ create table public.acc_request_votes (
   voted_at timestamptz not null default now(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (request_id, committee_member_id)
+  unique (request_id, committee_member_id),
+  constraint acc_request_votes_member_fkey foreign key (committee_member_id, voter_profile_id) references public.acc_committee_members(id, profile_id) on delete cascade
 );
 
 create unique index acc_requests_request_id_idx

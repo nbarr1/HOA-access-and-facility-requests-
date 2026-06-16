@@ -31,3 +31,7 @@ th { background: #eff6ff; color: #12345a; }
 .auth-form input { border: 1px solid #cbd5e1; border-radius: 10px; font: inherit; padding: 12px 14px; }
 .auth-form button { background: #0f2742; border: 0; border-radius: 10px; color: white; cursor: pointer; font: inherit; font-weight: 800; margin-top: 8px; padding: 12px 14px; }
 .auth-error { background: #fee2e2; border: 1px solid #fecaca; border-radius: 10px; color: #991b1b; margin-top: 16px; padding: 12px 14px; }
+
+.auth-message { background: #d1fae5; border: 1px solid #a7f3d0; border-radius: 10px; color: #065f46; margin-top: 16px; padding: 12px 14px; }
+.password-details { margin-top: 18px; }
+.password-details summary { cursor: pointer; font-weight: 800; }

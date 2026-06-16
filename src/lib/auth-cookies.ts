@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 import { requiredEnv } from "./env";
 
+const AUTH_COOKIE_CHUNK_SIZE = 3800;
+
 type StoredSupabaseSession = {
   access_token?: string;
   refresh_token?: string;
@@ -50,14 +52,26 @@ export async function getSupabaseAccessTokenFromCookies() {
 export async function setSupabaseAuthCookies(session: StoredSupabaseSession) {
   const cookieStore = await cookies();
   const maxAge = session.expires_at ? Math.max(session.expires_at - Math.floor(Date.now() / 1000), 0) : session.expires_in;
-
-  cookieStore.set(getSupabaseAuthCookieName(), encodeSupabaseAuthCookie(session), {
+  const cookieName = getSupabaseAuthCookieName();
+  const value = encodeSupabaseAuthCookie(session);
+  const options = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+    sameSite: "lax" as const,
     path: "/",
     maxAge
-  });
+  };
+
+  await clearSupabaseAuthCookies();
+
+  if (value.length <= AUTH_COOKIE_CHUNK_SIZE) {
+    cookieStore.set(cookieName, value, options);
+    return;
+  }
+
+  for (let index = 0; index * AUTH_COOKIE_CHUNK_SIZE < value.length; index += 1) {
+    cookieStore.set(`${cookieName}.${index}`, value.slice(index * AUTH_COOKIE_CHUNK_SIZE, (index + 1) * AUTH_COOKIE_CHUNK_SIZE), options);
+  }
 }
 
 export async function clearSupabaseAuthCookies() {
