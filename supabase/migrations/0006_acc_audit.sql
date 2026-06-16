@@ -92,6 +92,20 @@ language sql stable security definer
 set search_path = public
 as $$ select public.is_active_acc_committee_member(auth.uid()) $$;
 
+
+create or replace function public.current_user_owns_resident(resident uuid)
+returns boolean
+language sql stable security definer
+set search_path = public
+as $$
+  select resident is null or exists (
+    select 1
+    from public.residents r
+    where r.id = resident
+      and lower(r.email) = lower(coalesce(auth.jwt() ->> 'email', ''))
+  )
+$$;
+
 create policy "board and committee can read acc members" on public.acc_committee_members
   for select
   using (public.current_app_role() in ('board_admin', 'board_member') or public.current_is_acc_committee_member());
@@ -112,7 +126,7 @@ create policy "active committee updates acc requests" on public.acc_requests
 
 create policy "residents can submit their acc requests" on public.acc_requests
   for insert
-  with check (submitted_by = auth.uid());
+  with check (submitted_by = auth.uid() and public.current_user_owns_resident(resident_id));
 
 create policy "service manages acc requests" on public.acc_requests
   for all

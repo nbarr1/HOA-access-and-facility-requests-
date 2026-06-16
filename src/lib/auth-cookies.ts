@@ -39,13 +39,15 @@ export async function getSupabaseSessionFromCookies() {
   const cookieStore = await cookies();
   const cookieName = getSupabaseAuthCookieName();
   const exactCookie = cookieStore.get(cookieName);
+  if (exactCookie?.value) return decodeSupabaseAuthCookie(exactCookie.value);
+
   const chunkedCookieValue = cookieStore
     .getAll()
     .filter((cookie) => cookie.name.startsWith(`${cookieName}.`))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
     .map((cookie) => cookie.value)
     .join("");
-  return decodeSupabaseAuthCookie(exactCookie?.value ?? chunkedCookieValue);
+  return chunkedCookieValue ? decodeSupabaseAuthCookie(chunkedCookieValue) : null;
 }
 
 export async function getSupabaseAccessTokenFromCookies() {
