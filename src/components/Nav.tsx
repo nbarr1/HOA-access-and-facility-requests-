@@ -22,6 +22,7 @@ export function Nav({ access }: NavProps) {
           </>
         ) : null}
         {showAccLinks ? <Link href="/acc-audit">ACC Audit</Link> : null}
+        {showBoardLinks || showAccLinks ? <form action="/logout" method="POST" className="nav-form"><button type="submit">Sign out</button></form> : <Link href="/login">Sign in</Link>}
       </span>
     </nav>
   );
