@@ -16,3 +16,11 @@ th { background: #eff6ff; color: #12345a; }
 .hold, .unknown, .normal { background: #e0e7ff; color: #3730a3; }
 .low { background: #e5e7eb; color: #374151; }
 .hero { display: flex; justify-content: space-between; gap: 24px; align-items: flex-end; margin: 24px 0; }
+.dashboard-details { margin-bottom: 28px; }
+.dashboard-details summary { align-items: center; cursor: pointer; display: flex; justify-content: space-between; gap: 16px; font-size: 20px; font-weight: 800; }
+.dashboard-details summary small { color: #64748b; font-size: 14px; font-weight: 700; }
+.dashboard-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 20px 0 24px; }
+.dashboard-metrics div { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px; }
+.dashboard-metrics strong { display: block; color: #0f2742; font-size: 28px; line-height: 1.2; }
+.dashboard-metrics span { color: #475569; display: block; margin-top: 6px; }
+@media (max-width: 760px) { .grid, .dashboard-metrics { grid-template-columns: 1fr; } .dashboard-details summary { align-items: flex-start; flex-direction: column; } }
