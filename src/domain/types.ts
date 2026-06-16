@@ -32,6 +32,8 @@ export type RequestPriority = "urgent" | "high" | "normal" | "low";
 export type RequestStatus = "new" | "in_progress" | "done";
 export type RequestActionNeeded = "emergency_response" | "access_follow_up" | "facility_repair" | "vendor_follow_up" | "invoice_review" | "board_review";
 
+export type AccRequestStatus = "new" | "in_review" | "closed";
+
 export type RequestRecord = {
   id: string;
   category: RequestCategory;
@@ -49,33 +51,12 @@ export type TriageRequest = {
   receivedAt: string;
 };
 
-export type AccRequestStatus = "submitted" | "under_review" | "approved" | "denied" | "withdrawn";
-export type AccVoteValue = "approve" | "deny" | "abstain";
-
-export type AccRequest = {
+export type AccRequestRecord = {
   id: string;
-  residentId: string | null;
-  submittedBy: string | null;
-  title: string;
-  description: string;
+  request_id: string | null;
+  external_message_id: string | null;
+  from_email: string;
+  subject: string;
+  sanitized_body: string;
   status: AccRequestStatus;
-  decisionReason?: string | null;
-  submittedAt: string;
-  updatedAt: string;
-};
-
-export type AccRequestVote = {
-  requestId: string;
-  committeeMemberId: string;
-  vote: AccVoteValue;
-  rationale: string;
-  votedAt: string;
-};
-
-export type AccCommitteeMember = {
-  profileId: string;
-  appointedBy?: string | null;
-  active: boolean;
-  appointedAt: string;
-  removedAt?: string | null;
 };

@@ -1,5 +1,6 @@
 import type { LearnedClassification } from "@/services/request-learning-service";
 import { classifyWithLearning } from "@/services/request-learning-service";
+import { isAccFormEmail } from "@/domain/request-classifier";
 import { SupabaseAuditSink } from "@/services/audit-service";
 import type { TriageRequest } from "@/domain/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -18,6 +19,7 @@ type WorkflowResult = {
   classification: LearnedClassification;
   taskCreated: boolean;
   duplicate: boolean;
+  accRequestId: string | null;
 };
 
 const actionInstructions = {
@@ -51,13 +53,37 @@ async function createWorkflowTask(supabase: SupabaseClient, requestId: string, c
   if (error) throw error;
 }
 
+async function createAccRequest(supabase: SupabaseClient, input: InboundEmailWorkflowInput, requestId: string, messageId: string) {
+  const { data, error } = await supabase
+    .from("acc_requests")
+    .insert({
+      request_id: requestId,
+      external_message_id: messageId,
+      from_email: input.request.fromEmail,
+      subject: input.request.subject,
+      body_text: input.rawBodyText,
+      sanitized_body: input.request.bodyText,
+      received_at: input.request.receivedAt,
+      source: input.source ?? "email-webhook"
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return data.id as string;
+}
+
 export async function startEmailWorkflow(supabase: SupabaseClient, input: InboundEmailWorkflowInput): Promise<WorkflowResult> {
   const messageId = input.messageId?.trim() || fallbackMessageId(input);
   const classification = await classifyWithLearning(supabase, input.request);
+  const accFormEmail = isAccFormEmail(input.request);
   const existing = await supabase.from("requests").select("id").eq("external_message_id", messageId).maybeSingle();
   if (existing.error) throw existing.error;
   if (existing.data?.id) {
-    return { requestId: existing.data.id, messageId, classification, taskCreated: false, duplicate: true };
+    const accExisting = accFormEmail
+      ? await supabase.from("acc_requests").select("id").eq("request_id", existing.data.id).maybeSingle()
+      : { data: null, error: null };
+    if (accExisting.error) throw accExisting.error;
+    return { requestId: existing.data.id, messageId, classification, taskCreated: false, duplicate: true, accRequestId: accExisting.data?.id ?? null };
   }
 
   const { data, error } = await supabase
@@ -83,14 +109,16 @@ export async function startEmailWorkflow(supabase: SupabaseClient, input: Inboun
     .single();
   if (error) throw error;
 
+  const accRequestId = accFormEmail ? await createAccRequest(supabase, input, data.id, messageId) : null;
+
   const audit = await new SupabaseAuditSink(supabase).append({
     actor: { type: "system", id: "system" },
     action: "email.workflow_started",
     reason: `Inbound email started ${classification.actionNeeded} workflow.`,
     before: {},
-    after: { requestId: data.id, messageId, classification },
+    after: { requestId: data.id, messageId, classification, accRequestId },
     idempotencyKey: `email:${messageId}:workflow`
   });
   await createWorkflowTask(supabase, data.id, classification, audit.id);
-  return { requestId: data.id, messageId, classification, taskCreated: true, duplicate: false };
+  return { requestId: data.id, messageId, classification, taskCreated: true, duplicate: false, accRequestId };
 }

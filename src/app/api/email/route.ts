@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
     persisted: true,
     workflowStarted: !workflow.duplicate,
     taskCreated: workflow.taskCreated,
+    accRequestId: workflow.accRequestId,
     duplicate: workflow.duplicate
   }, { status: workflow.duplicate ? 200 : 201 });
 }

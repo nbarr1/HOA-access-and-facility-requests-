@@ -16,6 +16,14 @@ const categoryRules: Array<[RequestCategory, RegExp]> = [
   ["access", /\b(access|key|fob|credential|gate code|locked out)\b/i]
 ];
 
+const accFormMarkers: RegExp[] = [
+  /\barchitectural committee\b/i,
+  /\bacc request\b/i,
+  /\barchitectural request\b/i,
+  /\bexterior modification\b/i,
+  /\bdesign review\b/i
+];
+
 const actionByCategory: Record<RequestCategory, RequestActionNeeded> = {
   access: "access_follow_up",
   facilities: "facility_repair",
@@ -32,4 +40,9 @@ export class RuleBasedRequestClassifier implements RequestClassifier {
     const actionNeeded = priority === "urgent" ? "emergency_response" : actionByCategory[category];
     return { category, priority, actionNeeded, reason: `Rule-based keyword match selected ${category}/${priority}; action ${actionNeeded}.` };
   }
+}
+
+export function isAccFormEmail(request: Pick<TriageRequest, "fromEmail" | "subject" | "bodyText">): boolean {
+  const text = `${request.fromEmail} ${request.subject} ${request.bodyText}`;
+  return accFormMarkers.some((marker) => marker.test(text));
 }
