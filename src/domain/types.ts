@@ -32,6 +32,8 @@ export type RequestPriority = "urgent" | "high" | "normal" | "low";
 export type RequestStatus = "new" | "in_progress" | "done";
 export type RequestActionNeeded = "emergency_response" | "access_follow_up" | "facility_repair" | "vendor_follow_up" | "invoice_review" | "board_review";
 
+export type AccRequestStatus = "new" | "in_review" | "closed";
+
 export type RequestRecord = {
   id: string;
   category: RequestCategory;
@@ -47,4 +49,14 @@ export type TriageRequest = {
   subject: string;
   bodyText: string;
   receivedAt: string;
+};
+
+export type AccRequestRecord = {
+  id: string;
+  request_id: string | null;
+  external_message_id: string | null;
+  from_email: string;
+  subject: string;
+  sanitized_body: string;
+  status: AccRequestStatus;
 };
