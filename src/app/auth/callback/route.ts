@@ -5,6 +5,10 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
+function safeNextPath(value: string | null) {
+  return value?.startsWith("/") && !value.startsWith("//") ? value : "/";
+}
+
 function redirectToLogin(request: Request, message: string) {
   return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(message)}`, request.url));
 }
@@ -14,6 +18,7 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get("code");
   const tokenHash = requestUrl.searchParams.get("token_hash");
   const type = requestUrl.searchParams.get("type") as EmailOtpType | null;
+  const nextPath = safeNextPath(requestUrl.searchParams.get("next"));
   const supabase = createSupabasePublicClient();
 
   const result = code
@@ -32,5 +37,5 @@ export async function GET(request: Request) {
     token_type: result.data.session.token_type
   });
 
-  return NextResponse.redirect(new URL("/", request.url));
+  return NextResponse.redirect(new URL(nextPath, request.url));
 }

@@ -35,7 +35,7 @@ export function decodeSupabaseAuthCookie(value: string): StoredSupabaseSession |
   }
 }
 
-export async function getSupabaseAccessTokenFromCookies() {
+export async function getSupabaseSessionFromCookies() {
   const cookieStore = await cookies();
   const cookieName = getSupabaseAuthCookieName();
   const exactCookie = cookieStore.get(cookieName);
@@ -45,8 +45,11 @@ export async function getSupabaseAccessTokenFromCookies() {
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
     .map((cookie) => cookie.value)
     .join("");
-  const storedSession = decodeSupabaseAuthCookie(exactCookie?.value ?? chunkedCookieValue);
-  return storedSession?.access_token ?? null;
+  return decodeSupabaseAuthCookie(exactCookie?.value ?? chunkedCookieValue);
+}
+
+export async function getSupabaseAccessTokenFromCookies() {
+  return (await getSupabaseSessionFromCookies())?.access_token ?? null;
 }
 
 export async function setSupabaseAuthCookies(session: StoredSupabaseSession) {
