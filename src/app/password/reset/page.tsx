@@ -23,11 +23,14 @@ async function sendPasswordResetEmail(formData: FormData) {
     email,
     options: { redirectTo: `${origin}/auth/callback?next=/update-password` },
   });
+  // Treat "user not found" as success to prevent email enumeration.
+  if (error?.message?.toLowerCase().includes("user not found")) redirect("/password/reset?message=Check%20your%20email%20for%20a%20secure%20password%20reset%20link.");
   if (error || !data.properties?.action_link) redirect(`/password/reset?error=${encodeURIComponent(error?.message ?? "Unable to generate password reset link.")}`);
 
   try {
     await sendPasswordLink(email, data.properties.action_link, false);
-  } catch {
+  } catch (err) {
+    console.error("Failed to send password reset email:", err);
     redirect("/password/reset?error=Unable%20to%20send%20email.%20Please%20try%20again.");
   }
 

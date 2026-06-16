@@ -23,11 +23,14 @@ async function sendPasswordSetupEmail(formData: FormData) {
     email,
     options: { redirectTo: `${origin}/auth/callback?next=/update-password` },
   });
+  // Treat "user not found" as success to prevent email enumeration.
+  if (error?.message?.toLowerCase().includes("user not found")) redirect("/password/new?message=Check%20your%20email%20for%20a%20secure%20password%20setup%20link.");
   if (error || !data.properties?.action_link) redirect(`/password/new?error=${encodeURIComponent(error?.message ?? "Unable to generate password setup link.")}`);
 
   try {
     await sendPasswordLink(email, data.properties.action_link, true);
-  } catch {
+  } catch (err) {
+    console.error("Failed to send password setup email:", err);
     redirect("/password/new?error=Unable%20to%20send%20email.%20Please%20try%20again.");
   }
 
