@@ -72,6 +72,14 @@ npm run vantaca:read-balance -- "<unit address or account number>"
 
 Configure the `VANTACA_*_SELECTOR` values in `.env.local` for the current Vantaca UI. The helper reads one balance and posts it to the review queue; it does not change Vantaca or AirAllow.
 
+## ACC request audit workflow
+
+Architectural Control Committee (ACC) requests originate from the HOA website form and arrive in the HOA inbox by email. The inbound email workflow is the integration point: website form submissions are forwarded to `/api/email`, where the app can classify the message, preserve the original email metadata, and create a structured ACC audit record instead of leaving the request buried in an inbox.
+
+The ACC workflow treats each submission as a formal audit record with normalized fields for the owner/contact, property, request details, status, related email message, committee review activity, and votes. ACC committee members can access the ACC audit tab to review requests and maintain committee fields, while committee-only users are scoped to that ACC area and cannot access unrelated board dashboards.
+
+Board members can view ACC requests for oversight. However, board members who are not also ACC committee members have read-only access to ACC request details: they cannot edit ACC request fields and cannot create or change ACC votes. Within the ACC tab, the ACC dashboard panel can be expanded or collapsed so reviewers can move between summary metrics and the detailed audit table without leaving the tab.
+
 ## Email triage categorization
 
 Forward inbound HOA email to `/api/email` with header `x-hoa-email-secret`. The route stores each message in `requests` with a category, priority, and action needed.
