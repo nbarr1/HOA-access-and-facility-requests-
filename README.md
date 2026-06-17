@@ -115,6 +115,14 @@ The triage page sorts requests by priority: urgent, high, normal, then low.
 
 Unknown or low-confidence emails are not left uncategorized. They are stored as `other` with `board_review`, marked `needs_category_review`, and surfaced on the dashboard. When a board member saves a corrected category, priority, and action, the correction is stored in `request_classification_feedback`. Future inbound emails compare their tokens against those board corrections before falling back to the static rules, so repeated recategorizations improve classification over time.
 
+
+
+### Board triage workspace
+
+The dashboard now separates the total count of open requests from the latest category-review queue so board members can jump from the summary card to the full triage inbox. The triage page is the working inbox for all received emails: board users can filter by status/category/priority/review state, search sender/subject/body text, expand each row to read the email context, edit category/priority/action/status, and flag or clear category review.
+
+Category and priority rules are visible from the triage page and maintainable from **Rules** (`/settings/categories`). Rule edits validate labels and keyword patterns before saving, can be safely disabled instead of deleted, and write `categorization_rule.created` or `categorization_rule.updated` entries to the audit log so rule changes remain traceable. If `0009_request_categorization_rules.sql` has not been applied yet, the app shows the built-in rules read-only instead of crashing on Supabase schema-cache errors.
+
 TODO: Email triage rules are expected to need future maintenance for specific HOA cases. When updating future rules, review `src/domain/request-classifier.ts`, this `README.md` section, and related request-classifier tests in `tests/request-classifier.test.ts`; do not change current triage behavior as part of this TODO.
 
 Every accepted email starts a workflow:

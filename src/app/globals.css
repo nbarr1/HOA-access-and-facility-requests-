@@ -44,3 +44,22 @@ th { background: #eff6ff; color: #12345a; }
 .email-body-details { margin: 10px 0; }
 .email-body-details summary { color: #0f2742; cursor: pointer; font-weight: 800; }
 .email-body-details[open] summary { margin-bottom: 8px; }
+.button-link, button { background: #0f2742; border: 0; border-radius: 10px; color: white; cursor: pointer; display: inline-block; font: inherit; font-weight: 800; padding: 10px 13px; text-decoration: none; }
+.filter-bar { align-items: center; background: white; border: 1px solid #e2e8f0; border-radius: 16px; display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0; padding: 14px; }
+.filter-bar input, .filter-bar select, select, input, textarea { border: 1px solid #cbd5e1; border-radius: 10px; font: inherit; padding: 9px 10px; }
+.filter-bar input { min-width: 260px; }
+.check-label { align-items: center; display: flex; gap: 8px; font-weight: 700; }
+.rules-panel { margin: 18px 0; }
+.rules-panel summary { cursor: pointer; font-size: 18px; font-weight: 800; }
+.rules-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 14px; }
+.rule-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 14px; }
+.rule-card small, .rule-card code { display: block; margin-top: 8px; }
+.rule-card code { background: #e2e8f0; border-radius: 8px; padding: 6px 8px; white-space: normal; }
+.rule-list { display: grid; gap: 16px; }
+.rule-form { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 16px; }
+.rule-form label { display: grid; font-weight: 800; gap: 6px; }
+.rule-form textarea { min-height: 72px; }
+.rule-form button, .rule-form .check-label { align-self: end; }
+@media (max-width: 900px) { .rule-form, .rules-grid { grid-template-columns: 1fr; } }
+.warning-card { background: #fff7ed; border-color: #fed7aa; color: #7c2d12; }
+button:disabled, input:disabled, select:disabled, textarea:disabled { cursor: not-allowed; opacity: .65; }
