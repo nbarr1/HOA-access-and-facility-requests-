@@ -21,7 +21,7 @@ async function sendPasswordResetEmail(formData: FormData) {
   const { data, error } = await supabase.auth.admin.generateLink({
     type: "recovery",
     email,
-    options: { redirectTo: `${origin}/auth/callback?next=/update-password` },
+    options: { redirectTo: `${origin}/auth/confirm` },
   });
   // Treat "user not found" as success to prevent email enumeration.
   if (error?.message?.toLowerCase().includes("user not found")) redirect("/password/reset?message=Check%20your%20email%20for%20a%20secure%20password%20reset%20link.");
