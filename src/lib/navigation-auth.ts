@@ -1,4 +1,5 @@
 import { getSupabaseAccessTokenFromCookies } from "./auth-cookies";
+import { redirect } from "next/navigation";
 import { createSupabasePublicClient, createSupabaseServiceClient } from "./supabase";
 
 type AppRole = "board_admin" | "board_member" | "resident";
@@ -14,7 +15,7 @@ export type NavigationAccess = {
 };
 
 
-async function getCurrentUserId() {
+export async function getCurrentUserId() {
   const accessToken = await getSupabaseAccessTokenFromCookies();
   if (!accessToken) return null;
 
@@ -47,4 +48,17 @@ export async function getNavigationAccess(): Promise<NavigationAccess> {
   const isAccCommitteeMember = await getActiveAccMembership(userId);
 
   return { isBoardUser, isAccCommitteeMember };
+}
+
+
+export async function requireBoardUser() {
+  const access = await getNavigationAccess();
+  if (!access.isBoardUser) redirect("/login?error=Please%20sign%20in%20with%20a%20board%20account.");
+  return access;
+}
+
+export async function requireAccAccess() {
+  const access = await getNavigationAccess();
+  if (!access.isBoardUser && !access.isAccCommitteeMember) redirect("/login?error=Please%20sign%20in%20with%20an%20ACC%20or%20board%20account.");
+  return access;
 }

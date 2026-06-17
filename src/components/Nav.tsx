@@ -1,3 +1,4 @@
+import React from "react";
 import Link from "next/link";
 import type { NavigationAccess } from "@/lib/navigation-auth";
 
@@ -6,8 +7,8 @@ type NavProps = {
 };
 
 export function Nav({ access }: NavProps) {
-  const showBoardLinks = access?.isBoardUser ?? true;
-  const showAccLinks = access?.isAccCommitteeMember ?? true;
+  const showBoardLinks = access?.isBoardUser ?? false;
+  const showAccLinks = access?.isAccCommitteeMember ?? false;
 
   return (
     <nav className="nav">

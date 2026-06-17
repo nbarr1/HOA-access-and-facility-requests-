@@ -1,3 +1,4 @@
+import { requireBoardUser } from "@/lib/navigation-auth";
 import { createSupabaseServiceClient } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,7 @@ function formatTimestamp(value: string) {
 }
 
 export default async function AuditPage() {
+  await requireBoardUser();
   const supabase = createSupabaseServiceClient();
   const { data, error } = await supabase.from("audit_log").select("id,created_at,actor_name,action,reason").order("created_at", { ascending: false }).limit(100);
   const auditRows = (data ?? []) as AuditRow[];

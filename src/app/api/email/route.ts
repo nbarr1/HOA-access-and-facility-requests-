@@ -37,18 +37,17 @@ export async function POST(request: NextRequest) {
   }
   const receivedSecret = emailSecretFromRequest(request);
   if (receivedSecret !== configuredSecret) {
-    return NextResponse.json({
-      error: "Unauthorized",
-      auth: {
-        emailSecretHeaderPresent: request.headers.has("x-hoa-email-secret"),
-        authorizationHeaderPresent: request.headers.has("authorization"),
-        receivedSecretLength: receivedSecret.length,
-        configuredSecretLength: configuredSecret.length
-      }
-    }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const parsed = inboundEmailSchema.safeParse(await request.json());
+  let payload: unknown;
+  try {
+    payload = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+  }
+
+  const parsed = inboundEmailSchema.safeParse(payload);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
   const triageRequest: TriageRequest = {

@@ -1,5 +1,6 @@
 import { Badge } from "@/components/Badge";
 import type { RequestActionNeeded, RequestCategory, RequestPriority, RequestStatus } from "@/domain/types";
+import { requireBoardUser } from "@/lib/navigation-auth";
 import { createSupabaseServiceClient } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,7 @@ type RequestRow = {
 };
 
 export default async function TriagePage() {
+  await requireBoardUser();
   const supabase = createSupabaseServiceClient();
   const { data, error } = await supabase.from("requests").select("id,category,priority,status,action_needed,subject,from_email").order("received_at", { ascending: false });
   const sorted = ((data ?? []) as RequestRow[]).sort((a, b) => weight[a.priority] - weight[b.priority]);

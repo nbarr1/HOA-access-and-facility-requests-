@@ -1,3 +1,4 @@
+import { requireAccAccess } from "@/lib/navigation-auth";
 import { createSupabaseServiceClient } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -105,6 +106,7 @@ function buildCommitteeTrends(votes: AccVoteRow[]) {
 }
 
 export default async function AccAuditPage() {
+  await requireAccAccess();
   const supabase = createSupabaseServiceClient();
   const [requestsResult, votesResult] = await Promise.all([
     supabase.from("acc_requests").select("id,title,subject,status,submitted_at,received_at,disposition_at,decided_at,quorum_met").order("submitted_at", { ascending: false }),
