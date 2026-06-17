@@ -16,6 +16,8 @@ const categoryRules: Array<[RequestCategory, RegExp]> = [
   ["access", /\b(access|key|fob|credential|gate code|locked out)\b/i]
 ];
 
+const accSenderEmails = new Set(["accplantersrow@gmail.com"]);
+
 const accFormMarkers: RegExp[] = [
   /\barchitectural committee\b/i,
   /\bacc request\b/i,
@@ -43,6 +45,9 @@ export class RuleBasedRequestClassifier implements RequestClassifier {
 }
 
 export function isAccFormEmail(request: Pick<TriageRequest, "fromEmail" | "subject" | "bodyText">): boolean {
+  const fromEmail = request.fromEmail.trim().toLowerCase();
+  if (accSenderEmails.has(fromEmail)) return true;
+
   const text = `${request.fromEmail} ${request.subject} ${request.bodyText}`;
   return accFormMarkers.some((marker) => marker.test(text));
 }

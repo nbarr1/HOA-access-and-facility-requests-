@@ -20,6 +20,11 @@ describe("rule based request classifier", () => {
     expect(isAccFormEmail({ fromEmail: "form@example.invalid", subject: "Architectural request", bodyText: "Exterior modification submitted for design review." })).toBe(true);
   });
 
+  it("detects ACC form emails from the dedicated ACC sender", () => {
+    expect(isAccFormEmail({ fromEmail: "accplantersrow@gmail.com", subject: "New request", bodyText: "Please review this submission." })).toBe(true);
+    expect(isAccFormEmail({ fromEmail: " ACCPlantersRow@gmail.com ", subject: "New request", bodyText: "Please review this submission." })).toBe(true);
+  });
+
   it("does not classify generic triage emails as ACC requests", () => {
     expect(isAccFormEmail({ fromEmail: "sender@example.invalid", subject: "Pool light repair", bodyText: "The clubhouse entry light is broken." })).toBe(false);
   });
