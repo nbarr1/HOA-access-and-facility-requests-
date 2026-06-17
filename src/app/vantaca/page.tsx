@@ -1,5 +1,6 @@
 import { Badge } from "@/components/Badge";
 import type { DuesStatus } from "@/domain/types";
+import { requireBoardUser } from "@/lib/navigation-auth";
 import { createSupabaseServiceClient } from "@/lib/supabase";
 import { reconcileBillingStatus } from "@/services/dues-reconciliation-service";
 import { revalidatePath } from "next/cache";
@@ -32,6 +33,7 @@ function formatTimestamp(value: string) {
 
 async function approveReview(formData: FormData) {
   "use server";
+  await requireBoardUser();
   const id = String(formData.get("id") ?? "");
   const supabase = createSupabaseServiceClient();
   const { data, error } = await supabase
@@ -66,6 +68,7 @@ async function approveReview(formData: FormData) {
 
 async function ignoreReview(formData: FormData) {
   "use server";
+  await requireBoardUser();
   const id = String(formData.get("id") ?? "");
   const supabase = createSupabaseServiceClient();
   const { error } = await supabase
@@ -77,6 +80,7 @@ async function ignoreReview(formData: FormData) {
 }
 
 export default async function VantacaPage() {
+  await requireBoardUser();
   const supabase = createSupabaseServiceClient();
   const { data, error } = await supabase
     .from("vantaca_balance_reviews")
