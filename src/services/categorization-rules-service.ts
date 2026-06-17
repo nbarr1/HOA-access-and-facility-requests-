@@ -15,6 +15,16 @@ type RuleRow = {
   sort_order: number;
 };
 
+export type CategorizationRulesResult = {
+  rules: CategorizationRule[];
+  tableReady: boolean;
+  warning: string | null;
+};
+
+export function isMissingRulesTableError(error: { code?: string; message?: string } | null | undefined) {
+  return error?.code === "42P01" || error?.code === "PGRST205" || error?.message?.includes("request_categorization_rules") === true;
+}
+
 function fromRow(row: RuleRow): CategorizationRule {
   return {
     id: row.id,
@@ -29,7 +39,7 @@ function fromRow(row: RuleRow): CategorizationRule {
   };
 }
 
-export async function getCategorizationRules(supabase: SupabaseClient, activeOnly = false): Promise<CategorizationRule[]> {
+export async function getCategorizationRulesResult(supabase: SupabaseClient, activeOnly = false): Promise<CategorizationRulesResult> {
   let query = supabase
     .from("request_categorization_rules")
     .select("id,kind,label,pattern,category,priority,action_needed,is_active,notes,sort_order")
@@ -38,9 +48,19 @@ export async function getCategorizationRules(supabase: SupabaseClient, activeOnl
   if (activeOnly) query = query.eq("is_active", true);
   const { data, error } = await query;
   if (error) {
-    if (error.code === "42P01" || error.code === "PGRST205") return defaultCategorizationRules;
+    if (isMissingRulesTableError(error)) {
+      return {
+        rules: defaultCategorizationRules,
+        tableReady: false,
+        warning: "The request_categorization_rules table has not been created in this Supabase project yet. Default built-in rules are shown read-only until migration 0009_request_categorization_rules.sql is applied."
+      };
+    }
     throw error;
   }
   const rules = ((data ?? []) as RuleRow[]).map(fromRow);
-  return rules.length > 0 ? rules : defaultCategorizationRules;
+  return { rules: rules.length > 0 ? rules : defaultCategorizationRules, tableReady: true, warning: null };
+}
+
+export async function getCategorizationRules(supabase: SupabaseClient, activeOnly = false): Promise<CategorizationRule[]> {
+  return (await getCategorizationRulesResult(supabase, activeOnly)).rules;
 }

@@ -5,6 +5,7 @@ import type { RequestActionNeeded, RequestCategory, RequestPriority, RequestStat
 import { getCurrentUserId, requireBoardUser } from "@/lib/navigation-auth";
 import { createSupabaseServiceClient } from "@/lib/supabase";
 import { SupabaseAuditSink } from "@/services/audit-service";
+import { isMissingRulesTableError } from "@/services/categorization-rules-service";
 import { tokensForRequest } from "@/services/request-learning-service";
 import { revalidatePath } from "next/cache";
 
@@ -86,10 +87,16 @@ export async function saveCategorizationRule(formData: FormData) {
   validateRuleInput({ kind, label, pattern, category, priority, actionNeeded });
   const supabase = createSupabaseServiceClient();
   const before = id ? await supabase.from("request_categorization_rules").select("*").eq("id", id).maybeSingle() : { data: null, error: null };
-  if (before.error) throw before.error;
+  if (before.error) {
+    if (isMissingRulesTableError(before.error)) throw new Error("Rules cannot be saved until migration 0009_request_categorization_rules.sql is applied in Supabase.");
+    throw before.error;
+  }
   const payload = { kind, label: label.trim(), pattern: pattern.trim(), category: kind === "category" ? category : null, priority: kind === "priority" ? priority : null, action_needed: actionNeeded, notes: notes.trim(), is_active: isActive, updated_at: new Date().toISOString() };
   const result = id ? await supabase.from("request_categorization_rules").update(payload).eq("id", id) : await supabase.from("request_categorization_rules").insert(payload);
-  if (result.error) throw result.error;
+  if (result.error) {
+    if (isMissingRulesTableError(result.error)) throw new Error("Rules cannot be saved until migration 0009_request_categorization_rules.sql is applied in Supabase.");
+    throw result.error;
+  }
   await new SupabaseAuditSink(supabase).append({ actor: await actor(), action: id ? "categorization_rule.updated" : "categorization_rule.created", reason: "Board changed email categorization rules.", before: before.data ?? {}, after: payload, idempotencyKey: `rule:${id || label}:${Date.now()}` });
   revalidatePath("/settings/categories");
   revalidatePath("/triage");

@@ -61,3 +61,5 @@ th { background: #eff6ff; color: #12345a; }
 .rule-form textarea { min-height: 72px; }
 .rule-form button, .rule-form .check-label { align-self: end; }
 @media (max-width: 900px) { .rule-form, .rules-grid { grid-template-columns: 1fr; } }
+.warning-card { background: #fff7ed; border-color: #fed7aa; color: #7c2d12; }
+button:disabled, input:disabled, select:disabled, textarea:disabled { cursor: not-allowed; opacity: .65; }
