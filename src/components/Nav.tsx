@@ -20,6 +20,7 @@ export function Nav({ access }: NavProps) {
             <Link href="/triage">Triage</Link>
             <Link href="/vantaca">Vantaca</Link>
             <Link href="/audit">Audit</Link>
+            <Link href="/settings/categories">Rules</Link>
           </>
         ) : null}
         {showAccLinks ? <Link href="/acc-audit">ACC Audit</Link> : null}

@@ -12,6 +12,7 @@ describe("Nav", () => {
     expect(html).not.toContain("/triage");
     expect(html).not.toContain("/vantaca");
     expect(html).not.toContain("/audit");
+    expect(html).not.toContain("/settings/categories");
     expect(html).not.toContain("/acc-audit");
   });
 
@@ -22,6 +23,7 @@ describe("Nav", () => {
     expect(accOnly).toContain("/acc-audit");
     expect(accOnly).not.toContain("/dashboard");
     expect(boardOnly).toContain("/dashboard");
+    expect(boardOnly).toContain("/settings/categories");
     expect(boardOnly).not.toContain("/acc-audit");
   });
 });

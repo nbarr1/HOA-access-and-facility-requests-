@@ -1,4 +1,5 @@
 import { RuleBasedRequestClassifier, type Classification } from "@/domain/request-classifier";
+import { getCategorizationRules } from "@/services/categorization-rules-service";
 import type { RequestActionNeeded, RequestCategory, RequestPriority, TriageRequest } from "@/domain/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -58,7 +59,7 @@ export async function classifyWithLearning(supabase: SupabaseClient, request: Tr
     };
   }
 
-  const fallback = new RuleBasedRequestClassifier().classify(request);
+  const fallback = new RuleBasedRequestClassifier(await getCategorizationRules(supabase, true)).classify(request);
   const needsReview = fallback.category === "other";
   return {
     ...fallback,
