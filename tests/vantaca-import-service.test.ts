@@ -22,4 +22,13 @@ describe("Vantaca import service", () => {
   it("parses currency balances", () => {
     expect(parseBalance("$1,234.56")).toBe(1234.56);
   });
+
+  it("parses accounting-style negative balances", () => {
+    expect(parseBalance("($1,234.56)")).toBe(-1234.56);
+  });
+
+  it("reports the row number for invalid balances", () => {
+    expect(() => parseVantacaCsv("Home Address,Current Balance\n123 Main Street,not due\n"))
+      .toThrow("Row 2: Invalid balance: not due");
+  });
 });

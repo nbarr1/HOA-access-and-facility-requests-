@@ -26,10 +26,16 @@ type ResidentMatchRow = {
 
 export function parseBalance(value: string | number) {
   if (typeof value === "number") return value;
-  const normalized = value.replace(/[$,\s]/g, "");
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "-") return 0;
+  const isAccountingNegative = trimmed.startsWith("(") && trimmed.endsWith(")");
+  const normalized = trimmed
+    .replace(/\b(cr|credit)\b/i, "")
+    .replace(/[()$,\s]/g, "")
+    .trim();
   const parsed = Number(normalized);
   if (!Number.isFinite(parsed)) throw new Error(`Invalid balance: ${value}`);
-  return parsed;
+  return isAccountingNegative ? -parsed : parsed;
 }
 
 function duesStatusForBalance(balance: number): DuesStatus {
@@ -63,18 +69,25 @@ export function parseVantacaCsv(text: string): VantacaImportRecord[] {
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   if (lines.length < 2) return [];
   const headers = csvCell(lines[0]).map((header) => header.toLowerCase().replace(/[^a-z0-9]/g, ""));
-  return lines.slice(1).map((line) => {
+  return lines.slice(1).map((line, index) => {
     const cells = csvCell(line);
     const row = Object.fromEntries(headers.map((header, index) => [header, cells[index] ?? ""]));
-    return importRecordSchema.parse({
-      externalBillingId: row.externalbillingid || row.accountid || row.account || row.accountnumber || row.vantacaid,
-      unitAddress: row.unitaddress || row.address || row.propertyaddress || row.homeaddress,
-      residentName: row.residentname || row.name || row.owner || row.ownername,
-      email: row.email || undefined,
-      balance: row.balance || row.amountdue || row.totaldue || row.currentbalance || "0",
-      balanceReference: row.balancereference || row.statement || row.report || "",
-      asOf: row.asof || row.date || undefined
-    });
+    try {
+      const record = importRecordSchema.parse({
+        externalBillingId: row.externalbillingid || row.accountid || row.account || row.accountnumber || row.vantacaid,
+        unitAddress: row.unitaddress || row.address || row.propertyaddress || row.homeaddress,
+        residentName: row.residentname || row.name || row.owner || row.ownername,
+        email: row.email || undefined,
+        balance: row.balance || row.amountdue || row.totaldue || row.currentbalance || "0",
+        balanceReference: row.balancereference || row.statement || row.report || "",
+        asOf: row.asof || row.date || undefined
+      });
+      parseBalance(record.balance);
+      return record;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Invalid row";
+      throw new Error(`Row ${index + 2}: ${message}`);
+    }
   });
 }
 
