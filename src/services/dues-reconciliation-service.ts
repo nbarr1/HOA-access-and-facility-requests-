@@ -3,6 +3,7 @@ import type { AccessActionResult } from "@/adapters/access-provider";
 import type { BillingStatusRecord } from "@/adapters/billing-provider";
 import { ManualTaskAccessAdapter } from "@/adapters/manual-task-access-adapter";
 import type { AccessStatus, DuesStatus, Resident } from "@/domain/types";
+import { normalizeUnitAddress } from "@/lib/address-normalization";
 import { AccessDecisionService } from "@/services/access-decision-service";
 import { SupabaseAuditSink } from "@/services/audit-service";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -21,7 +22,7 @@ type ResidentRow = {
 };
 
 export type DuesReconciliationResult = {
-  externalBillingId: string;
+  externalBillingId?: string;
   residentId?: string;
   status: "matched" | "unmatched" | "unchanged" | "manual_task_created" | "provider_completed" | "error";
   error?: string;
@@ -60,14 +61,45 @@ function syncScope(record: BillingStatusRecord) {
 }
 
 async function findResident(supabase: SupabaseClient, record: BillingStatusRecord) {
+  if (record.residentId) {
+    const result = await supabase
+      .from("residents")
+      .select("id,name,unit_address,email,dues_status,access_status,external_access_id,external_billing_id,last_synced_at,override_reason")
+      .eq("id", record.residentId)
+      .limit(1)
+      .maybeSingle();
+    if (result.error) throw result.error;
+    if (result.data) return result.data as ResidentRow;
+  }
+  if (!record.externalBillingId && !record.unitAddress) return null;
+  if (record.externalBillingId) {
+    const result = await supabase
+      .from("residents")
+      .select("id,name,unit_address,email,dues_status,access_status,external_access_id,external_billing_id,last_synced_at,override_reason")
+      .eq("external_billing_id", record.externalBillingId)
+      .limit(1)
+      .maybeSingle();
+    if (result.error) throw result.error;
+    if (result.data) return result.data as ResidentRow;
+  }
+  if (!record.unitAddress) return null;
+
+  const exactResult = await supabase
+    .from("residents")
+    .select("id,name,unit_address,email,dues_status,access_status,external_access_id,external_billing_id,last_synced_at,override_reason")
+    .eq("unit_address", record.unitAddress)
+    .limit(1)
+    .maybeSingle();
+  if (exactResult.error) throw exactResult.error;
+  if (exactResult.data) return exactResult.data as ResidentRow;
+
   const result = await supabase
     .from("residents")
     .select("id,name,unit_address,email,dues_status,access_status,external_access_id,external_billing_id,last_synced_at,override_reason")
-    .eq("external_billing_id", record.externalBillingId)
-    .limit(1)
-    .maybeSingle();
+    .limit(1000);
   if (result.error) throw result.error;
-  return result.data as ResidentRow | null;
+  const normalized = normalizeUnitAddress(record.unitAddress);
+  return ((result.data ?? []) as ResidentRow[]).find((resident) => normalizeUnitAddress(resident.unit_address) === normalized) ?? null;
 }
 
 export async function reconcileBillingStatus(supabase: SupabaseClient, statusRecord: BillingStatusRecord): Promise<DuesReconciliationResult> {

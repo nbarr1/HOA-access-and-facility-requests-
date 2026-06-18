@@ -3,6 +3,7 @@ import type { DuesStatus } from "@/domain/types";
 import { requireBoardUser } from "@/lib/navigation-auth";
 import { createSupabaseServiceClient } from "@/lib/supabase";
 import { reconcileBillingStatus } from "@/services/dues-reconciliation-service";
+import { parseVantacaCsv, stageVantacaImport } from "@/services/vantaca-import-service";
 import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
@@ -43,10 +44,11 @@ async function approveReview(formData: FormData) {
     .maybeSingle();
   if (error) throw error;
   if (!data) throw new Error("Vantaca review row not found.");
-  if (!data.external_billing_id) throw new Error("Approved Vantaca review requires an external billing ID to reconcile.");
 
   const result = await reconcileBillingStatus(supabase, {
-    externalBillingId: data.external_billing_id,
+    externalBillingId: data.external_billing_id ?? undefined,
+    residentId: data.matched_resident_id ?? undefined,
+    unitAddress: data.unit_address ?? undefined,
     duesStatus: data.dues_status,
     balanceReference: data.balance_reference,
     asOf: data.imported_at
@@ -79,6 +81,18 @@ async function ignoreReview(formData: FormData) {
   revalidatePath("/vantaca");
 }
 
+async function uploadCsv(formData: FormData) {
+  "use server";
+  await requireBoardUser();
+  const file = formData.get("file");
+  if (!(file instanceof File)) throw new Error("Choose a CSV file exported from Vantaca or Excel.");
+  const records = parseVantacaCsv(await file.text());
+  if (records.length === 0) throw new Error("No import records found.");
+  const supabase = createSupabaseServiceClient();
+  await stageVantacaImport(supabase, records, "board-csv-upload");
+  revalidatePath("/vantaca");
+}
+
 export default async function VantacaPage() {
   await requireBoardUser();
   const supabase = createSupabaseServiceClient();
@@ -90,5 +104,5 @@ export default async function VantacaPage() {
   const reviews = (data ?? []) as VantacaReviewRow[];
   const pending = reviews.filter((review) => review.status === "pending");
 
-  return <main><section className="hero"><div><h1>Vantaca review queue</h1><p>Imported balances are staged for board review before dues status changes create access tasks.</p></div></section>{error ? <div className="card"><strong>Unable to load Vantaca reviews</strong><p>{error.message}</p></div> : null}<section className="grid"><div className="card"><h2>{pending.length}</h2><p>Pending review</p></div><div className="card"><h2>{reviews.filter((review) => review.matched_resident_id).length}</h2><p>Matched residents</p></div><div className="card"><h2>{reviews.filter((review) => review.status === "error").length}</h2><p>Needs cleanup</p></div></section><h2>Balance imports</h2><table className="table"><thead><tr><th>Status</th><th>Resident</th><th>Unit</th><th>Balance</th><th>Dues</th><th>Imported</th><th>Action</th></tr></thead><tbody>{reviews.map((review) => <tr key={review.id}><td><Badge value={review.status} /></td><td>{review.resident_name ?? "Unknown"}<br /><small>{review.external_billing_id ?? review.email ?? "No billing ID"}</small></td><td>{review.unit_address ?? "Unknown"}</td><td>{formatCurrency(review.balance)}<br /><small>{review.balance_reference || review.source}</small></td><td><Badge value={review.dues_status} /></td><td>{formatTimestamp(review.imported_at)}</td><td>{review.status === "pending" ? <div className="actions"><form action={approveReview}><input type="hidden" name="id" value={review.id} /><button type="submit">Approve</button></form><form action={ignoreReview}><input type="hidden" name="id" value={review.id} /><button type="submit">Ignore</button></form></div> : review.error_message ?? "Reviewed"}</td></tr>)}{reviews.length === 0 ? <tr><td colSpan={7}>No Vantaca imports found. Manual CSV imports and Playwright reads will appear here.</td></tr> : null}</tbody></table></main>;
+  return <main><section className="hero"><div><h1>Vantaca review queue</h1><p>Imported balances are staged by unit address before dues status changes create access tasks.</p></div></section>{error ? <div className="card"><strong>Unable to load Vantaca reviews</strong><p>{error.message}</p></div> : null}<section className="grid"><div className="card"><h2>{pending.length}</h2><p>Pending review</p></div><div className="card"><h2>{reviews.filter((review) => review.matched_resident_id).length}</h2><p>Matched addresses</p></div><div className="card"><h2>{reviews.filter((review) => review.status === "error").length}</h2><p>Needs cleanup</p></div></section><section><h2>Import balances</h2><form action={uploadCsv} className="card"><label htmlFor="file">CSV export</label><input id="file" name="file" type="file" accept=".csv,text/csv" required /><button type="submit">Upload for review</button><small>Use address and balance columns. Names and emails are optional display fields.</small></form></section><h2>Balance imports</h2><table className="table"><thead><tr><th>Status</th><th>Resident</th><th>Unit</th><th>Balance</th><th>Dues</th><th>Imported</th><th>Action</th></tr></thead><tbody>{reviews.map((review) => <tr key={review.id}><td><Badge value={review.status} /></td><td>{review.resident_name ?? "Unknown"}<br /><small>{review.external_billing_id ?? (review.matched_resident_id ? "Address matched" : "No address match")}</small></td><td>{review.unit_address ?? "Unknown"}</td><td>{formatCurrency(review.balance)}<br /><small>{review.balance_reference || review.source}</small></td><td><Badge value={review.dues_status} /></td><td>{formatTimestamp(review.imported_at)}</td><td>{review.status === "pending" ? <div className="actions"><form action={approveReview}><input type="hidden" name="id" value={review.id} /><button type="submit">Approve</button></form><form action={ignoreReview}><input type="hidden" name="id" value={review.id} /><button type="submit">Ignore</button></form></div> : review.error_message ?? "Reviewed"}</td></tr>)}{reviews.length === 0 ? <tr><td colSpan={7}>No Vantaca imports found. CSV uploads and automated exports will appear here.</td></tr> : null}</tbody></table></main>;
 }
