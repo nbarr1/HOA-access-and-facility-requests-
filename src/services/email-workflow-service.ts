@@ -182,7 +182,7 @@ export async function reconcileSentEmailAction(supabase: SupabaseClient, input: 
       body_text: input.bodyText,
       sent_at: input.sentAt,
       in_reply_to: input.inReplyTo ?? null,
-      references: referencedMessageIds(input),
+      reference_ids: referencedMessageIds(input),
       action_taken: "no_match",
       resulting_status: null
     });
