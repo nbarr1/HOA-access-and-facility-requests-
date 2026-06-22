@@ -2,7 +2,7 @@ import type { LearnedClassification } from "@/services/request-learning-service"
 import { classifyWithLearning } from "@/services/request-learning-service";
 import { isAccFormEmail } from "@/domain/request-classifier";
 import { SupabaseAuditSink } from "@/services/audit-service";
-import type { TriageRequest } from "@/domain/types";
+import type { RequestStatus, TriageRequest } from "@/domain/types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
 
@@ -13,6 +13,18 @@ export type InboundEmailWorkflowInput = {
   rawBodyText: string;
 };
 
+export type SentEmailWorkflowInput = {
+  messageId?: string;
+  source?: string;
+  fromEmail: string;
+  toEmails: string[];
+  subject: string;
+  bodyText: string;
+  sentAt: string;
+  inReplyTo?: string;
+  references?: string[];
+};
+
 type WorkflowResult = {
   requestId: string;
   messageId: string;
@@ -20,6 +32,25 @@ type WorkflowResult = {
   taskCreated: boolean;
   duplicate: boolean;
   accRequestId: string | null;
+};
+
+export type SentEmailActionResult = {
+  messageId: string;
+  matched: boolean;
+  requestId: string | null;
+  previousStatus: RequestStatus | null;
+  status: RequestStatus | null;
+  actionTaken: "reply_sent" | "completion_indicated" | "no_match";
+  manualTaskCompleted: boolean;
+};
+
+type MatchedRequest = {
+  id: string;
+  status: RequestStatus;
+  subject: string;
+  normalized_subject: string | null;
+  action_needed: string;
+  external_message_id: string | null;
 };
 
 const actionInstructions = {
@@ -41,6 +72,35 @@ function fallbackMessageId(input: InboundEmailWorkflowInput) {
   return `derived:${digest}`;
 }
 
+function fallbackSentMessageId(input: SentEmailWorkflowInput) {
+  const digest = createHash("sha256")
+    .update(input.fromEmail)
+    .update(input.toEmails.join(","))
+    .update(input.subject)
+    .update(input.bodyText)
+    .update(input.sentAt)
+    .digest("hex");
+  return `sent-derived:${digest}`;
+}
+
+export function normalizeThreadSubject(subject: string) {
+  return subject.replace(/^\s*((re|fw|fwd)\s*:\s*)+/i, "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+export function referencedMessageIds(input: Pick<SentEmailWorkflowInput, "inReplyTo" | "references">) {
+  return Array.from(new Set([input.inReplyTo, ...(input.references ?? [])].map((value) => value?.trim()).filter((value): value is string => Boolean(value))));
+}
+
+export function inferSentEmailAction(bodyText: string): Pick<SentEmailActionResult, "actionTaken" | "status"> {
+  const text = bodyText.toLowerCase();
+  if (text.includes("?")) return { actionTaken: "reply_sent", status: "in_progress" };
+
+  const completionPattern = /\b(approved|denied|completed|complete|resolved|handled|closed|fixed|submitted|sent to vendor|scheduled)\b/;
+  const negationPattern = /\b(not|never|no|isn't|wasn't|haven't|hasn't|won't|cannot|can't)\s+(?:\w+\s+){0,2}(approved|denied|completed|complete|resolved|handled|closed|fixed|submitted|sent\s+to\s+vendor|scheduled)\b/;
+  if (completionPattern.test(text) && !negationPattern.test(text)) return { actionTaken: "completion_indicated", status: "done" };
+  return { actionTaken: "reply_sent", status: "in_progress" };
+}
+
 async function createWorkflowTask(supabase: SupabaseClient, requestId: string, classification: LearnedClassification, auditId: string | null) {
   const instructions = `${actionInstructions[classification.actionNeeded]} Request ID: ${requestId}.`;
   const { error } = await supabase.from("manual_tasks").insert({
@@ -48,6 +108,7 @@ async function createWorkflowTask(supabase: SupabaseClient, requestId: string, c
     resident_id: null,
     action: classification.actionNeeded,
     instructions,
+    request_id: requestId,
     created_by_audit_id: auditId
   });
   if (error) throw error;
@@ -70,6 +131,119 @@ async function createAccRequest(supabase: SupabaseClient, input: InboundEmailWor
     .single();
   if (error) throw error;
   return data.id as string;
+}
+
+async function findRequestForSentEmail(supabase: SupabaseClient, input: SentEmailWorkflowInput): Promise<MatchedRequest | null> {
+  const messageIds = referencedMessageIds(input);
+  if (messageIds.length > 0) {
+    const { data, error } = await supabase
+      .from("requests")
+      .select("id,status,subject,normalized_subject,action_needed,external_message_id")
+      .in("external_message_id", messageIds)
+      .order("received_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    if (data) return data as MatchedRequest;
+  }
+
+  const normalizedSubject = normalizeThreadSubject(input.subject);
+  if (!normalizedSubject) return null;
+  const { data, error } = await supabase
+    .from("requests")
+    .select("id,status,subject,normalized_subject,action_needed,external_message_id")
+    .eq("normalized_subject", normalizedSubject)
+    .order("received_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as MatchedRequest | null) ?? null;
+}
+
+export async function reconcileSentEmailAction(supabase: SupabaseClient, input: SentEmailWorkflowInput): Promise<SentEmailActionResult> {
+  const messageId = input.messageId?.trim() || fallbackSentMessageId(input);
+  const existing = await supabase.from("sent_email_actions").select("request_id,resulting_status,action_taken").eq("external_message_id", messageId).maybeSingle();
+  if (existing.error) throw existing.error;
+  if (existing.data) {
+    return {
+      messageId,
+      matched: Boolean(existing.data.request_id),
+      requestId: existing.data.request_id ?? null,
+      previousStatus: null,
+      status: existing.data.resulting_status ?? null,
+      actionTaken: existing.data.action_taken ?? "no_match",
+      manualTaskCompleted: false
+    };
+  }
+
+  const matchedRequest = await findRequestForSentEmail(supabase, input);
+  const inferred = inferSentEmailAction(input.bodyText);
+  if (!matchedRequest) {
+    const { error } = await supabase.from("sent_email_actions").insert({
+      external_message_id: messageId,
+      source: input.source ?? "sent-email-webhook",
+      from_email: input.fromEmail,
+      to_emails: input.toEmails,
+      subject: input.subject,
+      body_text: input.bodyText,
+      sent_at: input.sentAt,
+      in_reply_to: input.inReplyTo ?? null,
+      reference_ids: referencedMessageIds(input),
+      action_taken: "no_match",
+      resulting_status: null
+    });
+    if (error) throw error;
+    return { messageId, matched: false, requestId: null, previousStatus: null, status: null, actionTaken: "no_match", manualTaskCompleted: false };
+  }
+
+  const nextStatus = matchedRequest.status === "done" ? matchedRequest.status : inferred.status;
+  const taskUpdate = await supabase
+    .from("manual_tasks")
+    .update({ status: "done", completed_at: input.sentAt })
+    .eq("provider", "email-workflow")
+    .eq("action", matchedRequest.action_needed)
+    .eq("status", "pending")
+    .eq("request_id", matchedRequest.id)
+    .select("id");
+  if (taskUpdate.error) throw taskUpdate.error;
+
+  const { error: requestError } = await supabase.from("requests").update({ status: nextStatus, updated_at: new Date().toISOString() }).eq("id", matchedRequest.id);
+  if (requestError) throw requestError;
+
+  const { error: sentError } = await supabase.from("sent_email_actions").insert({
+    request_id: matchedRequest.id,
+    external_message_id: messageId,
+    source: input.source ?? "sent-email-webhook",
+    from_email: input.fromEmail,
+    to_emails: input.toEmails,
+    subject: input.subject,
+    body_text: input.bodyText,
+    sent_at: input.sentAt,
+    in_reply_to: input.inReplyTo ?? null,
+    reference_ids: referencedMessageIds(input),
+    action_taken: inferred.actionTaken,
+    resulting_status: nextStatus
+  });
+  if (sentError) throw sentError;
+
+  await new SupabaseAuditSink(supabase).append({
+    actor: { type: "system", id: "system" },
+    action: "email.sent_action_detected",
+    reason: `Sent email ${inferred.actionTaken === "completion_indicated" ? "indicated completion" : "showed direct account activity"} for request ${matchedRequest.id}.`,
+    before: { requestId: matchedRequest.id, status: matchedRequest.status },
+    after: { requestId: matchedRequest.id, messageId, status: nextStatus, actionTaken: inferred.actionTaken, manualTaskIds: taskUpdate.data?.map((task: { id: string }) => task.id) ?? [] },
+    idempotencyKey: `sent-email:${messageId}:action`
+  });
+
+  return {
+    messageId,
+    matched: true,
+    requestId: matchedRequest.id,
+    previousStatus: matchedRequest.status,
+    status: nextStatus,
+    actionTaken: inferred.actionTaken,
+    manualTaskCompleted: Boolean(taskUpdate.data?.length)
+  };
 }
 
 export async function startEmailWorkflow(supabase: SupabaseClient, input: InboundEmailWorkflowInput): Promise<WorkflowResult> {
@@ -103,6 +277,7 @@ export async function startEmailWorkflow(supabase: SupabaseClient, input: Inboun
       received_at: input.request.receivedAt,
       inbound_source: input.source ?? "email-webhook",
       external_message_id: messageId,
+      normalized_subject: normalizeThreadSubject(input.request.subject),
       workflow_started_at: new Date().toISOString()
     })
     .select("id")
