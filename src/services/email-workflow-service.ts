@@ -48,6 +48,7 @@ type MatchedRequest = {
   id: string;
   status: RequestStatus;
   subject: string;
+  normalized_subject: string | null;
   action_needed: string;
   external_message_id: string | null;
 };
@@ -92,8 +93,11 @@ export function referencedMessageIds(input: Pick<SentEmailWorkflowInput, "inRepl
 
 export function inferSentEmailAction(bodyText: string): Pick<SentEmailActionResult, "actionTaken" | "status"> {
   const text = bodyText.toLowerCase();
+  if (text.includes("?")) return { actionTaken: "reply_sent", status: "in_progress" };
+
   const completionPattern = /\b(approved|denied|completed|complete|resolved|handled|closed|fixed|submitted|sent to vendor|scheduled)\b/;
-  if (completionPattern.test(text)) return { actionTaken: "completion_indicated", status: "done" };
+  const negationPattern = /\b(not|never|no|isn't|wasn't|haven't|hasn't|won't|cannot|can't)\s+(?:\w+\s+){0,2}(approved|denied|completed|complete|resolved|handled|closed|fixed|submitted|sent\s+to\s+vendor|scheduled)\b/;
+  if (completionPattern.test(text) && !negationPattern.test(text)) return { actionTaken: "completion_indicated", status: "done" };
   return { actionTaken: "reply_sent", status: "in_progress" };
 }
 
@@ -104,6 +108,7 @@ async function createWorkflowTask(supabase: SupabaseClient, requestId: string, c
     resident_id: null,
     action: classification.actionNeeded,
     instructions,
+    request_id: requestId,
     created_by_audit_id: auditId
   });
   if (error) throw error;
@@ -133,7 +138,7 @@ async function findRequestForSentEmail(supabase: SupabaseClient, input: SentEmai
   if (messageIds.length > 0) {
     const { data, error } = await supabase
       .from("requests")
-      .select("id,status,subject,action_needed,external_message_id")
+      .select("id,status,subject,normalized_subject,action_needed,external_message_id")
       .in("external_message_id", messageIds)
       .order("received_at", { ascending: false })
       .limit(1)
@@ -146,12 +151,13 @@ async function findRequestForSentEmail(supabase: SupabaseClient, input: SentEmai
   if (!normalizedSubject) return null;
   const { data, error } = await supabase
     .from("requests")
-    .select("id,status,subject,action_needed,external_message_id")
-    .ilike("subject", `%${normalizedSubject.replaceAll("%", "\\%").replaceAll("_", "\\_")}%`)
+    .select("id,status,subject,normalized_subject,action_needed,external_message_id")
+    .eq("normalized_subject", normalizedSubject)
     .order("received_at", { ascending: false })
-    .limit(10);
+    .limit(1)
+    .maybeSingle();
   if (error) throw error;
-  return (data as MatchedRequest[] | null)?.find((row) => normalizeThreadSubject(row.subject) === normalizedSubject) ?? null;
+  return (data as MatchedRequest | null) ?? null;
 }
 
 export async function reconcileSentEmailAction(supabase: SupabaseClient, input: SentEmailWorkflowInput): Promise<SentEmailActionResult> {
@@ -197,7 +203,7 @@ export async function reconcileSentEmailAction(supabase: SupabaseClient, input: 
     .eq("provider", "email-workflow")
     .eq("action", matchedRequest.action_needed)
     .eq("status", "pending")
-    .ilike("instructions", `%Request ID: ${matchedRequest.id}.%`)
+    .eq("request_id", matchedRequest.id)
     .select("id");
   if (taskUpdate.error) throw taskUpdate.error;
 
@@ -271,6 +277,7 @@ export async function startEmailWorkflow(supabase: SupabaseClient, input: Inboun
       received_at: input.request.receivedAt,
       inbound_source: input.source ?? "email-webhook",
       external_message_id: messageId,
+      normalized_subject: normalizeThreadSubject(input.request.subject),
       workflow_started_at: new Date().toISOString()
     })
     .select("id")
